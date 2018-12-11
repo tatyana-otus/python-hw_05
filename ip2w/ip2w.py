@@ -8,6 +8,7 @@ import urlparse
 import json
 import re
 import ConfigParser
+import time
 
 CONFIG_PATH = "/usr/local/etc/ip2w/ip2w.cfg"
 LOG_DIR = "/var/log/ip2w"
@@ -41,23 +42,23 @@ def set_logger(dir):
 
 
 def init(path):
-    if not os.path.isfile(path):
-        logging.error("No {} config file".format(path))
-        raise IOError
-    file_cfg = ConfigParser.SafeConfigParser(CONFIG, allow_no_value=True)
-    file_cfg.read(path)
-    cfg["geo_url"] = file_cfg.get("API", "geo_url")
-    cfg["weather_url"] = file_cfg.get("API", "weather_url")
-    cfg["weather_appid"] = file_cfg.get("API", "weather_appid")
-    if cfg["weather_appid"] == "":
-        raise ValueError("No weather_appid in {} config".format(path))
-    return cfg
+    try:
+        if not os.path.isfile(path):
+            raise IOError("No {} config file".format(path))
+        file_cfg = ConfigParser.SafeConfigParser(CONFIG, allow_no_value=True)
+        file_cfg.read(path)
+        cfg["geo_url"] = file_cfg.get("API", "geo_url")
+        cfg["weather_url"] = file_cfg.get("API", "weather_url")
+        cfg["weather_appid"] = file_cfg.get("API", "weather_appid")
+        if cfg["weather_appid"] == "":
+            raise ValueError("No weather_appid in {} config".format(path))
+    except Exception as e:
+        logging.exception("init error")
 
 
 def application(environ, start_response):
     try:
         url = environ["REQUEST_URI"]
-        cfg = init(CONFIG_PATH)       
         response_body = request_handler(cfg["geo_url"],
                                         cfg["weather_url"],
                                         cfg["weather_appid"],
@@ -73,12 +74,26 @@ def application(environ, start_response):
     return [response_body]
 
 
+def get_conn_data(url, timeout=5, reconnect_attempts=10, reconnect_delay=1):
+    attempts = reconnect_attempts
+    while True:
+        try:
+            conn = urllib2.urlopen(url, timeout=timeout)
+            data = conn.read()
+            conn.close()
+            return data
+        except urllib2.URLError as e:
+            time.sleep(reconnect_delay)
+            logging.error("Connection error: reconnecting ... ")
+            attempts -= 1
+            if attempts == 0:
+                raise
+
+
 def get_geo(url, ip_address):
     url = urlparse.urljoin(url, ip_address, "geo")
     logging.info(url)
-    conn = urllib2.urlopen(url, timeout=5)
-    data = conn.read()
-    conn.close()
+    data = get_conn_data(url)
     raw_data = json.loads(data)
     coords = tuple(raw_data.get('loc', '').split(','))
     if coords:
@@ -90,9 +105,7 @@ def get_weather(url, lat, lon, appid):
     arg = {"lat": lat, "lon": lon, "appid": appid, "units": "metric"}
     url = url + "?" + urllib.urlencode(arg)
     logging.info(url)
-    conn = urllib2.urlopen(url, timeout=5)
-    data = conn.read()
-    conn.close()
+    data = get_conn_data(url)
     raw_data = json.loads(data)
     return format_response(raw_data)
 
@@ -109,4 +122,6 @@ def request_handler(geo_url, weather_url, appid, argument):
     lat, lon = get_geo(geo_url, result.group(1))
     return get_weather(weather_url, lat, lon, appid)
 
+
 set_logger(LOG_DIR)
+init(CONFIG_PATH)

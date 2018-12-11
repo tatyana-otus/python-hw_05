@@ -3,7 +3,6 @@ Vendor:         Otus
 Group:          PD01
 URL:            http://otus.ru/lessons/3/
 Source0:        otus-%{current_datetime}.tar.gz
-#Source0:        otus.tar.gz
 BuildRoot:      %{_tmppath}/otus-%{current_datetime}
 Name:           ip2w
 Version:        0.0.1
@@ -35,10 +34,10 @@ tar xf %{SOURCE0} --strip-component=1
 %{__mkdir} -p %{buildroot}/%{__bindir}
 %{__mkdir} -p %{buildroot}/%{__etcdir}/%{name}
 %{__mkdir} -p %{buildroot}/%{__logdir}%{name}
-%{__install} -pD -m 644 %{name}.service %{buildroot}/%{__systemddir}/%{name}.service
-%{__install} -pD -m 644 %{name}.ini %{buildroot}/%{__bindir}/%{name}.ini
-%{__install} -pD -m 755 %{name}.py %{buildroot}/%{__bindir}/%{name}.py
-%{__install} -pD -m 644 %{name}.cfg %{buildroot}/%{__etcdir}/%{name}/%{name}.cfg
+%{__install} -pD -m 644 %{name}/%{name}.service %{buildroot}/%{__systemddir}/%{name}.service
+%{__install} -pD -m 644 %{name}/%{name}.ini %{buildroot}/%{__bindir}/%{name}.ini
+%{__install} -pD -m 755 %{name}/%{name}.py %{buildroot}/%{__bindir}/%{name}.py
+%{__install} -pD -m 644 %{name}/%{name}.cfg %{buildroot}/%{__etcdir}/%{name}/%{name}.cfg
 
 %post
 %systemd_post %{name}.service

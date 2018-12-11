@@ -21,30 +21,29 @@ def cases(cases):
 
 
 class HandlerTest(unittest.TestCase):
-    cfg = None
 
     @classmethod
     def setUpClass(cls):
-        cls.cfg = app.init("ip2w.cfg")
+        app.init("ip2w.cfg")
 
     def test_valid_appid(self):
         """Reading weather_appid from cgf file"""
-        self.assertNotEqual(type(self).cfg, None)
-        self.assertNotEqual(type(self).cfg["weather_appid"], "")
+        self.assertNotEqual(app.cfg, None)
+        self.assertNotEqual(app.cfg["weather_appid"], "")
 
     @cases(["/ip2w/qwqw", "/ip2w/8.8.8", "/ip2w/256.34.5.45S"])
     def test_invalid_request(self, url):
         """Invalid IP v4 address"""
         with self.assertRaises(Exception):
-            app.request_handler(url, type(self).cfg["weather_appid"])
+            app.request_handler(url, app.cfg["weather_appid"])
 
     @cases([{"url": "/ip2w/8.8.8.8", "city": "Mountain View"},
             {"url": "/ip2w/8.8.4.4", "city": "Cheney"}])
     def test_invalid_request(self, arg):
         """Valid IP v4 address"""
-        res = app.request_handler(type(self).cfg["geo_url"],
-                                  type(self).cfg["weather_url"],
-                                  type(self).cfg["weather_appid"],
+        res = app.request_handler(app.cfg["geo_url"],
+                                  app.cfg["weather_url"],
+                                  app.cfg["weather_appid"],
                                   arg["url"])
         raw_data = json.loads(res)
         city = raw_data.get("city", "")
